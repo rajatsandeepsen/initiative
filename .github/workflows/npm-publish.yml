@@ -12,9 +12,9 @@ jobs:
       - uses: oven-sh/setup-bun@v1
 
       - run: bun install --frozen-lockfile
-      - run: bun run build && bun run publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+      - run: bun run build && bun run publish
 
 # on:
 #   release:
