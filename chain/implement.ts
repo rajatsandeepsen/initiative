@@ -1,4 +1,4 @@
-import { Example } from "..";
+import { Example } from "../actions";
 import { prepareExample, prepareChatFromExample } from "../lib/prompt";
 import { State, StateToValues } from "../state";
 import { AvailableActions, ChainExample, ChainFunctions, getZodChainedCombined } from "./chained";

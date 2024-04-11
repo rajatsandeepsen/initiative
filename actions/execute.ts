@@ -1,4 +1,4 @@
-import { ResponseType } from "../";
+import { ResponseType } from "../extract";
 import { State } from "../state";
 import { infer as Infer } from "zod";
 import {

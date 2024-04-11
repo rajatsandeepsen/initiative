@@ -1,7 +1,7 @@
 import { infer as Infer } from "zod";
 import { AvailableActions, ChainFunctions, implementChain } from ".";
 import { State } from "../state";
-import { ResponseType } from "../";
+import { ResponseType } from "../extract";
 
 export type ChainPermissions<S extends AvailableActions> = {
   [F in keyof S]: boolean;
