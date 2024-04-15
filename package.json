@@ -1,17 +1,17 @@
 {
   "name": "initiative",
-  "version": "0.2.0",
-  "main": "dist/index.js",
+  "version": "0.2.3",
+  "description": "Let's turn your LLM into Action Models with Zod",
+  "main": "index.ts",
   "types": "dist/index.d.ts",
+  "type": "module",
   "license": "MIT",
-  "files": [
-    "dist/**/*"
-  ],
   "scripts": {
     "lint": "biome lint ./index.ts",
     "format": "biome format ./index.ts ",
     "build": "bun run build.mjs",
-    "publish": "npm publish"
+    "publish": "npm publish",
+    "prepublishOnly": "bun run build"
   },
   "dependencies": {
     "@langchain/community": "^0.0.40",
@@ -24,7 +24,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.5.3",
     "@types/bun": "latest",
-    "bun-plugin-dts": "^0.2.1",
+    "bun-plugin-dts": "^0.2.2",
     "typescript": "^5.2.2"
   }
 }

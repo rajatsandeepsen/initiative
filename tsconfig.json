@@ -4,6 +4,7 @@
     "."
   ],
   "compilerOptions": {
+    "declaration": true,
     "tsBuildInfoFile": "node_modules/.cache/tsbuildinfo.json",
     "target": "ES2022",
     "lib": [

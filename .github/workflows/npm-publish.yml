@@ -13,7 +13,7 @@ jobs:
       - run: bun install --frozen-lockfile
 
       - name: Publish package on NPM 📦
-        run: echo "Hi $NODE_AUTH_TOKEN" && bun run build && bun run publish
+        run: echo "Hi $NODE_AUTH_TOKEN Hi" && bun run publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
 
