@@ -1,6 +1,6 @@
 import { TogetherAI } from "@langchain/community/llms/togetherai";
 import { z } from "zod";
-import { createExtraction } from "./";
+import { createExtraction } from "./extract";
 import {
   AvailableActions,
   executeChainActions,

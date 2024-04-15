@@ -1,8 +1,16 @@
-import dts from 'bun-plugin-dts'
+import dts from "bun-plugin-dts";
 
 await Bun.build({
-  entrypoints: ['./index.ts'],
-  outdir: './dist',
+  entrypoints: ["./index.ts"],
+  outdir: "./dist",
   minify: true,
-  plugins: [dts()]
-})
+  external: [
+    "zod",
+    "zod-to-ts",
+    "@langchain/community",
+    "@langchain/core",
+    "langchain",
+    "zod-validation-error",
+  ],
+  plugins: [dts()],
+});

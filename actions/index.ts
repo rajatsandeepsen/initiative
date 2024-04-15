@@ -1,16 +1,15 @@
-import { ZodFunction, z, ZodOptional, ZodSchema, infer as Infer } from "zod";
+import { z } from "zod";
+import type { ZodFunction, ZodOptional, ZodSchema, infer as Infer } from "zod";
 import { zodToTs, printNode } from "zod-to-ts";
 import { wrapType } from "../lib/utils";
 import { prepareChatFromExample, prepareExample } from "../lib/prompt";
-import { State, StateToValues } from "../state";
-import { ToAsyncFunction, ToFunctionFirstParam } from "../type";
+import type { State, StateToValues } from "../state";
+import type { ToAsyncFunction, ToFunctionFirstParam } from "../type";
 
 export type Schema = Record<
   string,
-  
-  
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-ZodSchema  | ZodFunction<any, any> | ZodOptional<ZodFunction<any, any>>
+// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+    ZodSchema  | ZodFunction<any, any> | ZodOptional<ZodFunction<any, any>>
 >;
 
 export type ExtractFunctions<A extends Schema> = {

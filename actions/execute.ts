@@ -1,13 +1,13 @@
-import { ResponseType } from "../extract";
-import { State } from "../state";
+import type { ResponseType } from "../extract";
+import type { State } from "../state";
 import { infer as Infer } from "zod";
-import {
+import type {
   ExtractFunctions,
   Functions,
   Schema,
   getZodCombined,
   implement,
-} from "./";
+} from "./index";
 
 export type Permissions<S extends Schema> = {
   [F in keyof ExtractFunctions<S>]: boolean;

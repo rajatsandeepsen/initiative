@@ -1,11 +1,13 @@
 {
   "name": "initiative",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Let's turn your LLM into Action Models with Zod",
-  "main": "index.ts",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
-  "type": "module",
   "license": "MIT",
+  "files": [
+    "dist/**/*"
+  ],
   "scripts": {
     "lint": "biome lint ./index.ts",
     "format": "biome format ./index.ts ",
