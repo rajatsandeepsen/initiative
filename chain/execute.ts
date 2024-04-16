@@ -1,7 +1,7 @@
-import { infer as Infer } from "zod";
-import { AvailableActions, ChainFunctions, implementChain } from ".";
-import { State } from "../state";
-import { ResponseType } from "../extract";
+import type { infer as Infer } from "zod";
+import type { AvailableActions, ChainFunctions, getZodChainedCombined, implementChain } from ".";
+import type { State } from "../state";
+import type { ResponseType } from "../extract";
 
 export type ChainPermissions<S extends AvailableActions> = {
   [F in keyof S]: boolean;
@@ -41,7 +41,7 @@ export const executeChainActions = async <
 
   const permissions = config?.permissions ?? undefined;
 
-  if (response.response.validated.success !== true)
+  if (!response.response.validated.success)
     throw new Error("Response is not validated");
 
   const chainActions = response.response.validated.data as {

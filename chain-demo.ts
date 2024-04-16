@@ -2,13 +2,13 @@ import { TogetherAI } from "@langchain/community/llms/togetherai";
 import { z } from "zod";
 import { createExtraction } from "./extract";
 import {
-  AvailableActions,
+  type AvailableActions,
   executeChainActions,
   getZodChainedCombined,
   implementChain,
 } from "./chain";
 import { chainedActionPrompt } from "./lib/prompt";
-import { State } from "./state";
+import type { State } from "./state";
 
 const model = new TogetherAI({
   modelName: "mistralai/Mixtral-8x7B-Instruct-v0.1",
