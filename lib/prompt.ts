@@ -11,6 +11,7 @@ import {
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
 import { stateDescription } from "./utils";
+import { ZodSchema } from "zod";
 
 export const system_message = `Your goal is to extract structured information from the user's input that matches type. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema.`;
 export const defaultPromptTemplate = `Your goal is to extract structured information from the user's input that matches the form described below. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema shown below.
@@ -73,10 +74,11 @@ export const outputToJson = (output: unknown) => {
   return `<json>${JSON.stringify(output)}</json>`;
 };
 
-export const prepareExample = (examples: Example, stateTitle = "State") => {
+export const prepareExample = (examples: Example, stateZod?:ZodSchema, stateTitle = "State") => {
   const format_instructions = `${examples
     .map((example) => {
-      const line = `Input: ${example.Input}\n${stateDescription(example.State, stateTitle, ", ")}Output: ${outputToJson(
+      const transformedState = stateZod?.parse(example.State) ?? example.State
+      const line = `Input: ${example.Input}\n${stateDescription(transformedState, stateTitle, ", ")}Output: ${outputToJson(
         example.Output,
       )}`;
       return line;

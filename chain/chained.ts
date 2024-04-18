@@ -1,4 +1,4 @@
-import {
+import type {
   infer as Infer,
   ZodEffects,
   ZodFunction,
@@ -7,27 +7,26 @@ import {
   ZodTransformer,
   ZodTypeAny,
   input as Input,
-  z,
   ZodObject,
 } from "zod";
+import { z } from "zod";
 import { printNode, zodToTs } from "zod-to-ts";
-import { wrapType } from "../lib/utils";
-import { State, StateToValues } from "../state";
-import { AsyncFunction, ToAsyncFunction } from "../type";
+import { ObjectMap, wrapType } from "../lib/utils";
+import type { State, StateToValues } from "../state";
+import type { AsyncFunction, ToAsyncFunction } from "../type";
 
 export type AvailableActions = Record<
   string,
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ZodFunction<any, any>
 >;
 
 export const getZodChainedCombined = <
   S extends AvailableActions,
-  U extends State,
+  U extends State
 >(
   schema: S,
-  state?: U,
+  state?: U
 ) => {
   const actions: Record<string, ZodSchema> = {};
   const AvailableActions: string[] = [];
@@ -44,7 +43,7 @@ export const getZodChainedCombined = <
     actionZodValue.push(
       z.object({
         [key]: zodValue,
-      }),
+      })
     );
 
     const { node: type } = zodToTs(zodValue, key);
@@ -52,14 +51,27 @@ export const getZodChainedCombined = <
     RecordOfActions[key] = typeString;
     const description = value._def.description;
     RecordOfActionsType.push(
-      `${description ? `\n// ${description}\n` : ""}type ${key} = ${typeString}`,
+      `${description ? `\n// ${description}\n` : ""}type ${key} = ${typeString}`
     );
     AvailableActions.push(key);
   }
 
   const stateZod = state ? z.object(state).partial().optional() : undefined;
+  const stateWithOutTransform = state
+    ? ObjectMap(z.object(state)._def.shape(), ([k, v]) => {
+        if ("innerType" in v && typeof v.innerType === "function")
+          return [k, v.innerType()];
+
+        return [k, v];
+      })
+    : undefined;
+
+  const rawStateZod = stateWithOutTransform
+    ? z.object(stateWithOutTransform).partial().optional()
+    : undefined;
+
   const AvailableActionsType = `type AvailableActions = ${AvailableActions.map(
-    (x) => `{${x}: ${x}}`,
+    (x) => `{${x}: ${x}}`
   ).join(" | ")}`;
   const ChainedActionsType = "type OutputActions = Array<AvailableActions>";
 
@@ -81,6 +93,7 @@ ${ChainedActionsType}`;
     AvailableActionsType,
     ChainedActionsType,
     stateZod,
+    rawStateZod,
     type,
   };
 };
@@ -88,7 +101,7 @@ ${ChainedActionsType}`;
 export type ChainFunctions<A extends AvailableActions, U extends State, P> = (
   param: P,
   state?: Partial<StateToValues<U>>,
-  rawState?: Partial<Input<ZodObject<U>>>,
+  rawState?: Partial<Input<ZodObject<U>>>
 ) => { [K in keyof A]: ToAsyncFunction<Infer<A[K]>> };
 
 export type ChainExample<A extends AvailableActions, U extends State> = {

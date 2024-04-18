@@ -15,23 +15,24 @@ export const implementChain = <A extends AvailableActions, U extends State, P>(
     typeName?: string;
   }
 ) => {
-  const { type_description, typeString, type } = materials;
+  const { type_description, typeString, type, stateZod } = materials;
 
   const format_instructions = prepareExample(
     (config.examples ?? []) as Example,
+    stateZod,
     "State: "
   );
 
-  const exampleChat = prepareChatFromExample(
-    (config.examples ?? []) as Example
-  );
+  // const exampleChat = prepareChatFromExample(
+  //   (config.examples ?? []) as Example
+  // );
 
   return {
     type_description,
     typeString,
     type,
     format_instructions,
-    exampleChat,
+    // exampleChat,
     functions: config.functions,
   };
 };

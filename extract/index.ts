@@ -32,18 +32,17 @@ export const createExtraction = async <U extends State, A extends AvailableActio
   init: ReturnType<typeof implement<U, S, P> | typeof implementChain<A, S, P>> ,
   zod: Pick<
     ReturnType<typeof getZodCombined<S, U> | typeof getZodChainedCombined>,
-    "combinedZod" | "stateZod"
+    "combinedZod" | "stateZod" | "rawStateZod"
   >,
   prompt: PromptTemplate = defaultPrompt,
-  invokeOptions?: BaseLanguageModelCallOptions | undefined
 ) => {
-  const { type_description, format_instructions, exampleChat } = init;
-
-  const { combinedZod, stateZod } = zod;
-
+  const { type_description, format_instructions } = init;
+  
+  const { combinedZod, stateZod, rawStateZod } = zod;
+  
   type InvokeConfig = {
     state?: Partial<StateToValues<U>>;
-    reInvokeLimit?: number;
+    invokeOptions?: BaseLanguageModelCallOptions | undefined
   };
 
   const invoke = async (
@@ -51,7 +50,7 @@ export const createExtraction = async <U extends State, A extends AvailableActio
     config?: InvokeConfig
   ): Promise<ResponseType<S, U>> => {
     const validatedState = safeParseState<U>(stateZod, config?.state);
-    const rawValidated = rawSafeParseState<U>(stateZod, config?.state);
+    const rawValidated = rawSafeParseState<U>(rawStateZod, config?.state);
 
     const promptText = await prompt.invoke({
       type_description,
@@ -64,7 +63,7 @@ export const createExtraction = async <U extends State, A extends AvailableActio
 
     console.log(promptText.value);
 
-    const response = await llm.invoke(promptText.value)
+    const response = await llm.invoke(promptText.value, config?.invokeOptions)
     // const response = (await chainedMessages.pipe(llm).invoke(
     //   {
     //     system_message: new SystemMessage(system_message),

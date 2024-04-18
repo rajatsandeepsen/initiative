@@ -38,10 +38,13 @@ const Schema = {
 } satisfies AvailableActions;
 
 const userState = {
-  userSelected: z
-    .enum(["YES", "NO"])
-    .transform((x) => `User selected ${x} on text permissions`),
+  userSelectedContact: z
+    .string()
+    .transform((x) => `User selected a contact named ${x} from list`),
   userDragged: z.string().transform((x) => `User dragged ${x} out of the box`),
+  userEvent: z.object({
+    x:z.string()
+  }).transform((e) => e.x)
 } satisfies State;
 
 type FuncParam = {
@@ -49,23 +52,23 @@ type FuncParam = {
   extra: object;
 };
 
-const userStateData = {
-  userSelected: "YES",
-  userDragged: "Toy",
-};
-
 const materials = getZodChainedCombined(Schema, userState);
 
 const init = implementChain(Schema, userState, materials, {
-  functions: (x: FuncParam, y) => ({
+  functions: (x: FuncParam, y, z) => ({
     searchUserWithName: async ({ name }) => ({ email: `${name}@gmail.com` }),
     sentEmailToUser: async ({ email, text }) =>
       `Senting email to ${email}, with subject: ${text}`,
-    createSummary: async ({ text }) => ({ text: `Summary of ${text}` }),
+    createSummary: async ({ text }) =>{ 
+      console.log("extra data", x,y,z)
+      return ({ text: `Summary of ${text}` })},
   }),
   examples: [
     {
       Input: "Find user Rajat",
+      State: {
+        userSelectedContact: "Rajat"
+      },
       Output: [{ searchUserWithName: { name: "Rajat" } }],
     },
     {
@@ -97,6 +100,7 @@ const chain = await createExtraction(
   {
     combinedZod: materials.combinedZod,
     stateZod: materials.stateZod,
+    rawStateZod: materials.rawStateZod
   },
   chainedActionPrompt,
 );
@@ -104,7 +108,9 @@ const chain = await createExtraction(
 const res = await chain.invoke(
   "find Diane, and sent a summary of 'health care' to her on email",
   {
-    state: userStateData,
+    state: {
+      userSelectedContact: "Diane"
+    },
   },
 );
 

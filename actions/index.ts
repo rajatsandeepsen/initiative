@@ -61,7 +61,8 @@ export const getZodCombined = <S extends Schema, U extends State,>(schema: S, st
     actionZod,
     dataZod,
     combinedZod,
-    stateZod
+    stateZod,
+    rawStateZod:undefined
   }
 }
 
