@@ -1,12 +1,13 @@
 import { TogetherAI } from "@langchain/community/llms/togetherai";
 import { z } from "zod";
-import { createExtraction } from "./extract";
 import {
   type AvailableActions,
   executeChainActions,
   getZodChainedCombined,
   implementChain,
+  ChainReturn,
 } from "./chain";
+import { createExtraction } from "./extract";
 import { chainedActionPrompt } from "./lib/prompt";
 import type { State } from "./state";
 
@@ -24,14 +25,14 @@ const Schema = {
   sentEmailToUser: z
     .function()
     .describe(
-      "When action is requisting to sent an email to someone. Pass name of user as param.",
+      "When action is requisting to sent an email to someone. Pass name of user as param."
     )
     .args(z.object({ email: z.string(), text: z.string() }))
     .returns(z.string()),
   createSummary: z
     .function()
     .describe(
-      "When action is requisting to create a summary of text. Pass text as param.",
+      "When action is requisting to create a summary of text. Pass text as param."
     )
     .args(z.object({ text: z.string() }))
     .returns(z.object({ text: z.string() })),
@@ -42,9 +43,11 @@ const userState = {
     .string()
     .transform((x) => `User selected a contact named ${x} from list`),
   userDragged: z.string().transform((x) => `User dragged ${x} out of the box`),
-  userEvent: z.object({
-    x:z.string()
-  }).transform((e) => e.x)
+  userEvent: z
+    .object({
+      x: z.string(),
+    })
+    .transform((e) => e.x),
 } satisfies State;
 
 type FuncParam = {
@@ -54,20 +57,23 @@ type FuncParam = {
 
 const materials = getZodChainedCombined(Schema, userState);
 
+// console.log(JSON.stringify(materials.actionZodData, null, 2))
+
 const init = implementChain(Schema, userState, materials, {
   functions: (x: FuncParam, y, z) => ({
     searchUserWithName: async ({ name }) => ({ email: `${name}@gmail.com` }),
     sentEmailToUser: async ({ email, text }) =>
       `Senting email to ${email}, with subject: ${text}`,
-    createSummary: async ({ text }) =>{ 
-      console.log("extra data", x,y,z)
-      return ({ text: `Summary of ${text}` })},
+    createSummary: async ({ text }) => {
+      console.log("extra data", x, y, z);
+      return { text: `Summary of ${text}` };
+    },
   }),
   examples: [
     {
       Input: "Find user Rajat",
       State: {
-        userSelectedContact: "Rajat"
+        userSelectedContact: "Rajat",
       },
       Output: [{ searchUserWithName: { name: "Rajat" } }],
     },
@@ -93,45 +99,80 @@ const init = implementChain(Schema, userState, materials, {
 });
 
 const chain = await createExtraction(
-  Schema,
-  userState,
+  // Schema,
+  // userState,
   model,
   init,
   {
     combinedZod: materials.combinedZod,
     stateZod: materials.stateZod,
-    rawStateZod: materials.rawStateZod
+    rawStateZod: materials.rawStateZod,
   },
-  chainedActionPrompt,
+  chainedActionPrompt
 );
 
-const res = await chain.invoke(
-  "find Diane, and sent a summary of 'health care' to her on email",
-  {
-    state: {
-      userSelectedContact: "Diane"
+// const res = await chain.invoke(
+//   "find Diane, and sent a summary of 'health care' to her on email",
+//   {
+//     state: {
+//       userSelectedContact: "Diane"
+//     },
+//   },
+// );
+
+const res = {
+  input: "find Diane, and sent a summary of 'health care' to her on email",
+  response: {
+    raw: '\n<json>[{"searchUserWithName":{"name":"Diane"}},{"createSummary":{"text":"health care"}},{"sentEmailToUser":{"email":"unknown","text":"unknown"}}]</json>',
+    validated: {
+      data: [
+        { searchUserWithName: { name: "Diane" } },
+        { createSummary: { text: "health care" } },
+        { sentEmailToUser: { email: "unknown", text: "unknown" } },
+      ],
+      json: [
+        { searchUserWithName: { name: "Diane" } },
+        { createSummary: { text: "health care" } },
+        { sentEmailToUser: { email: "unknown", text: "unknown" } },
+      ],
+      success: true,
     },
   },
-);
-
-console.log(res.response.validated?.success ? res.response.validated.data : "");
+  state: {
+    raw: { userSelectedContact: "Diane" },
+    partial: { data: { userSelectedContact: "Diane" }, success: true },
+    validated: {
+      data: {
+        userSelectedContact: "User selected a contact named Diane from list",
+      },
+      success: true,
+    },
+  },
+};
 
 const x = await executeChainActions(
-  Schema,
-  userState,
-  init as ReturnType<typeof implementChain>,
+  // Schema,
+  // userState,
+  init,
   res,
   {
     permissions: {
       searchUserWithName: true,
-      sentEmailToUser: false,
       createSummary: true,
+      sentEmailToUser: true
     },
     params: {
       ctx: {},
       extra: {},
     },
-  },
+  }
 );
 
 console.log(x);
+
+
+// type xxx = ChainReturn<typeof Schema>
+
+// const xxx :xxx = {
+  
+// }

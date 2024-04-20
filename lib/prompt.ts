@@ -1,5 +1,5 @@
 import { PromptTemplate } from "@langchain/core/prompts";
-import { Example } from "../actions";
+import type { Example } from "../actions";
 import {
   AIMessage,
   HumanMessage,
@@ -11,7 +11,7 @@ import {
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
 import { stateDescription } from "./utils";
-import { ZodSchema } from "zod";
+import type { ZodSchema } from "zod";
 
 export const system_message = `Your goal is to extract structured information from the user's input that matches type. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema.`;
 export const defaultPromptTemplate = `Your goal is to extract structured information from the user's input that matches the form described below. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema shown below.

@@ -8,6 +8,7 @@ import type {
   ZodTypeAny,
   input as Input,
   ZodObject,
+  output as Output,
 } from "zod";
 import { z } from "zod";
 import { printNode, zodToTs } from "zod-to-ts";
@@ -16,10 +17,19 @@ import type { State, StateToValues } from "../state";
 import type { AsyncFunction, ToAsyncFunction } from "../type";
 
 export type AvailableActions = Record<
-  string,
+  string | number | symbol,
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   ZodFunction<any, any>
 >;
+
+export type ActionZodData<A extends AvailableActions> = {
+  [K in keyof A]: {
+    key: K;
+    value: A[K];
+    args: Input<A[K]>;
+    returns: Output<A[K]>;
+  };
+};
 
 export const getZodChainedCombined = <
   S extends AvailableActions,
@@ -28,34 +38,50 @@ export const getZodChainedCombined = <
   schema: S,
   state?: U
 ) => {
-  const actions: Record<string, ZodSchema> = {};
   const AvailableActions: string[] = [];
-  const RecordOfActions: Record<string, string> = {};
   const RecordOfActionsType: string[] = [];
   type ActionZodValue = [ZodTypeAny, ZodTypeAny, ...ZodTypeAny[]];
   const actionZodValue = [] as unknown as ActionZodValue;
 
-  for (const [key, value] of Object.entries(schema)) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    const zodValue = (value._def.args ?? z.any())._def?.items[0] as ZodSchema;
-    actions[key] = zodValue;
+  const actionZodData = ObjectMap(schema, ([K, V]) => {
+    const zodValue = (V._def.args ?? z.any())._def?.items[0] as ZodSchema;
 
-    actionZodValue.push(
-      z.object({
-        [key]: zodValue,
-      })
-    );
-
-    const { node: type } = zodToTs(zodValue, key);
+    const { node: type } = zodToTs(zodValue, K as string);
     const typeString = printNode(type);
-    RecordOfActions[key] = typeString;
-    const description = value._def.description;
-    RecordOfActionsType.push(
-      `${description ? `\n// ${description}\n` : ""}type ${key} = ${typeString}`
-    );
-    AvailableActions.push(key);
-  }
+    const description = V._def.description;
 
+    RecordOfActionsType.push(
+      `${description ? `\n// ${description}\n` : ""}type ${String(K)} = ${typeString}`
+    );
+    AvailableActions.push(K as string);
+
+    return [
+      K,
+      {
+        args: V._def.args,
+        returns: V._def.returns,
+        // value: V,
+        key: K,
+      },
+    ];
+  }) as ActionZodData<S>
+
+  // for (const [key, value] of Object.entries(schema)) {
+  //   const zodValue = (value._def.args ?? z.any())._def?.items[0] as ZodSchema;
+  //   // actions[key] = zodValue;
+
+  //   actionZodValue.push(
+  //     z.object({
+  //       [key]: zodValue,
+  //     })
+  //   );
+
+  //   const { node: type } = zodToTs(zodValue, key);
+  //   const typeString = printNode(type);
+  //   const description = value._def.description;
+  // }
+
+  // state zod creation
   const stateZod = state ? z.object(state).partial().optional() : undefined;
   const stateWithOutTransform = state
     ? ObjectMap(z.object(state)._def.shape(), ([k, v]) => {
@@ -70,6 +96,7 @@ export const getZodChainedCombined = <
     ? z.object(stateWithOutTransform).partial().optional()
     : undefined;
 
+  // Type definitions
   const AvailableActionsType = `type AvailableActions = ${AvailableActions.map(
     (x) => `{${x}: ${x}}`
   ).join(" | ")}`;
@@ -94,6 +121,7 @@ ${ChainedActionsType}`;
     ChainedActionsType,
     stateZod,
     rawStateZod,
+    actionZodData,
     type,
   };
 };

@@ -1,9 +1,9 @@
 import { TogetherAI } from "@langchain/community/llms/togetherai";
 import { z } from "zod";
-import { createExtraction } from "./extract";
-import { State } from "./state";
-import { getZodCombined, implement, Schema } from "./actions";
+import { type Schema, getZodCombined, implement } from "./actions";
 import { executeActions } from "./actions/execute";
+import { createExtraction } from "./extract";
+import type { State } from "./state";
 
 const model = new TogetherAI({
   modelName: "mistralai/Mixtral-8x7B-Instruct-v0.1",
@@ -35,7 +35,7 @@ const schema = {
     .args(z.enum(["NOW"]))
     .describe("Non optional function to get the current time. Always use it.")
     .returns(z.date()),
-    // .optional(),
+  // .optional(),
 } satisfies Schema;
 
 type FuncParam = {
@@ -43,14 +43,11 @@ type FuncParam = {
   extra: unknown;
 };
 
-const { actionZod, combinedZod, dataZod, stateZod } = getZodCombined(
-  schema,
-  userState
-);
+const material = getZodCombined(schema, userState);
 
-const init = implement(schema, combinedZod, {
+const init = implement(schema, material, {
   state: userState,
-  functions: (z, y) => ({
+  functions: (z: FuncParam, y) => ({
     getUserData: (name) => `${name} ${y?.userDragged}`,
     setName: () => {
       console.log("Name changed");
@@ -60,6 +57,7 @@ const init = implement(schema, combinedZod, {
   examples: [
     {
       Input: "What the time?",
+      State: {},
       Output: {
         getTime: "NOW",
       },
@@ -81,22 +79,23 @@ const init = implement(schema, combinedZod, {
   ],
 });
 
-const chain = await createExtraction(schema, userState, model, init, {
-  combinedZod,
-  stateZod,
-});
+const chain = await createExtraction(
+  model,
+  init,
+  material
+);
 
 const userStateData = {
   userSelected: "YES",
   userDragged: "Toy",
 };
 
-console.log(init.typeString)
+console.log(init.typeString);
 
 const response = await chain.invoke("Find Alen", { state: userStateData });
 console.log(response);
 
-const recipt = await executeActions(init, response, actionZod, {
+const recipt = await executeActions(init, response, material, {
   permissions: { getTime: false, setName: true, getUserData: true },
   params: {
     ctx: {},

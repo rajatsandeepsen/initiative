@@ -1,7 +1,7 @@
-import { Example } from "../actions";
+import type { Example } from "../actions";
 import { prepareExample, prepareChatFromExample } from "../lib/prompt";
-import { State, StateToValues } from "../state";
-import { AvailableActions, ChainExample, ChainFunctions, getZodChainedCombined } from "./chained";
+import { type State, StateToValues } from "../state";
+import type { AvailableActions, ChainExample, ChainFunctions, getZodChainedCombined } from "./chained";
 import { infer as Infer, ZodObject } from "zod";
 
 

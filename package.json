@@ -1,6 +1,6 @@
 {
   "name": "initiative",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "Let's turn your LLM into Action Models with Zod",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

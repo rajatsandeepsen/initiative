@@ -27,7 +27,7 @@ export type ActionReturn<S extends Schema> = {
 const executeActions = async <U extends State, S extends Schema, P>(
   init: ReturnType<typeof implement<U, S, P>>,
   response: ResponseType<S, U>,
-  actionZod: ReturnType<typeof getZodCombined<S, U>>["actionZod"],
+  {actionZod}: ReturnType<typeof getZodCombined<S, U>>,
   config?: {
     permissions?: Permissions<S>;
     params?: (typeof init)["functions"] extends undefined

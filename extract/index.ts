@@ -1,16 +1,15 @@
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import {
+import type {
   BaseLanguageModel,
   BaseLanguageModelCallOptions,
 } from "langchain/base_language";
-import { PromptTemplate } from "langchain/prompts";
-import { infer as Infer, ZodObject } from "zod";
-import { Schema, getZodCombined, implement } from "../actions";
-import { chainedMessages, defaultPrompt, system_message } from "../lib/prompt";
+import type { PromptTemplate } from "langchain/prompts";
+import type { infer as Infer, ZodObject } from "zod";
+import type { Schema, getZodCombined, implement } from "../actions";
+import { defaultPrompt } from "../lib/prompt";
 import { stateDescription } from "../lib/utils";
 import { rawSafeParseState, safeParse, safeParseState } from "../lib/validation";
-import { State, StateToValues } from "../state";
-import { AvailableActions, getZodChainedCombined, implementChain } from "./../chain";
+import type { State, StateToValues } from "../state";
+import type { AvailableActions, getZodChainedCombined, implementChain } from "./../chain";
 
 export type ResponseType<S extends Schema, U extends State> = {
   input: string;
@@ -21,17 +20,17 @@ export type ResponseType<S extends Schema, U extends State> = {
   };
   response: {
     raw: string;
-    validated?: ReturnType<typeof safeParse>;
+    validated?: ReturnType<typeof safeParse<S>>;
   };
 };
 
 export const createExtraction = async <U extends State, A extends AvailableActions, S extends Schema, P>(
-  schema: A | S,
-  state: U,
+  // schema: A | S,
+  // state: U,
   llm: BaseLanguageModel,
-  init: ReturnType<typeof implement<U, S, P> | typeof implementChain<A, S, P>> ,
+  init: ReturnType<typeof implement<U, S, P> | typeof implementChain<A, U, P>> ,
   zod: Pick<
-    ReturnType<typeof getZodCombined<S, U> | typeof getZodChainedCombined>,
+    ReturnType<typeof getZodCombined<S, U> | typeof getZodChainedCombined<A, U>>,
     "combinedZod" | "stateZod" | "rawStateZod"
   >,
   prompt: PromptTemplate = defaultPrompt,
@@ -61,7 +60,7 @@ export const createExtraction = async <U extends State, A extends AvailableActio
       input_prompt: Input,
     });
 
-    console.log(promptText.value);
+    // console.log("Prompt Text", promptText);
 
     const response = await llm.invoke(promptText.value, config?.invokeOptions)
     // const response = (await chainedMessages.pipe(llm).invoke(

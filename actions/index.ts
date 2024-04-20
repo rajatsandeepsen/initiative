@@ -1,15 +1,15 @@
 import { z } from "zod";
-import type { ZodFunction, ZodOptional, ZodSchema, infer as Infer } from "zod";
-import { zodToTs, printNode } from "zod-to-ts";
-import { wrapType } from "../lib/utils";
+import type { infer as Infer, ZodFunction, ZodOptional, ZodSchema } from "zod";
+import { printNode, zodToTs } from "zod-to-ts";
 import { prepareChatFromExample, prepareExample } from "../lib/prompt";
+import { ObjectMap, wrapType } from "../lib/utils";
 import type { State, StateToValues } from "../state";
 import type { ToAsyncFunction, ToFunctionFirstParam } from "../type";
 
 export type Schema = Record<
   string,
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    ZodSchema  | ZodFunction<any, any> | ZodOptional<ZodFunction<any, any>>
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  ZodSchema | ZodFunction<any, any> | ZodOptional<ZodFunction<any, any>>
 >;
 
 export type ExtractFunctions<A extends Schema> = {
@@ -29,15 +29,18 @@ export type Example<A extends Schema = Schema, U extends State = State> = {
   }>;
 }[];
 
-export const getZodCombined = <S extends Schema, U extends State,>(schema: S, state?: U) => {
-  const actions: Record<string, ZodSchema> = {};
+export const getZodCombined = <S extends Schema, U extends State>(
+  schema: S,
+  state?: U
+) => {
+  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
+  const actions: Record<string, ZodFunction<any, any>> = {};
   const objects: Record<string, ZodSchema> = {};
 
   for (const [key, value] of Object.entries(schema)) {
     const isFunc = "args" in value._def;
     const isOptionalFunc = "unwrap" in value && "args" in value._def.innerType;
 
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const newValue: ZodSchema = isFunc
       ? value._def.args._def.items[0]
       : isOptionalFunc
@@ -55,21 +58,32 @@ export const getZodCombined = <S extends Schema, U extends State,>(schema: S, st
 
   const combinedZod = actionZod.merge(dataZod);
 
-  const stateZod = state ? z.object(state) : undefined
+  const stateZod = state ? z.object(state) : undefined;
+  const stateWithOutTransform = state
+    ? ObjectMap(z.object(state)._def.shape(), ([k, v]) => {
+        if ("innerType" in v && typeof v.innerType === "function")
+          return [k, v.innerType()];
+
+        return [k, v];
+      })
+    : undefined;
+
+  const rawStateZod = stateWithOutTransform
+    ? z.object(stateWithOutTransform).partial().optional()
+    : undefined;
 
   return {
     actionZod,
     dataZod,
     combinedZod,
     stateZod,
-    rawStateZod:undefined
-  }
-}
-
+    rawStateZod,
+  };
+};
 
 export const implement = <U extends State, A extends Schema, P>(
   schema: A,
-  combinedZod: ZodSchema,
+  {combinedZod}: ReturnType<typeof getZodCombined<A, U>>,
   config: {
     state?: U;
     functions?: Functions<A, U, P>;
@@ -77,27 +91,24 @@ export const implement = <U extends State, A extends Schema, P>(
     typeName?: string;
   }
 ) => {
-
   const { node: type } = zodToTs(combinedZod, config.typeName ?? "data");
   const typeString = printNode(type);
   const type_description = wrapType(typeString, config.typeName ?? "data");
   const format_instructions = prepareExample(
     (config.examples ?? []) as Example,
-    "State: "
+    // "State: "
   );
 
-  const exampleChat = prepareChatFromExample(
-    (config.examples ?? []) as Example
-  );
-
-  
+  // const exampleChat = prepareChatFromExample(
+  //   (config.examples ?? []) as Example
+  // );
 
   return {
     type_description,
     typeString,
     type,
     format_instructions,
-    exampleChat,
+    // exampleChat,
     functions: config.functions,
   };
 };

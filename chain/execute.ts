@@ -3,8 +3,8 @@ import type { AvailableActions, ChainFunctions, getZodChainedCombined, implement
 import type { State } from "../state";
 import type { ResponseType } from "../extract";
 
-export type ChainPermissions<S extends AvailableActions> = {
-  [F in keyof S]: boolean;
+export type ChainPermissions<A extends AvailableActions> = {
+  [F in keyof A]: boolean;
 };
 
 type ChainResponse<S extends AvailableActions, K extends keyof S = keyof S> = ({
@@ -13,36 +13,35 @@ type ChainResponse<S extends AvailableActions, K extends keyof S = keyof S> = ({
   permission?: boolean;
 } & ({ value: ReturnType<Infer<S[K]>> } | { error: Error }))[];
 
-export type ChainReturn<S extends AvailableActions> = {
+export type ChainReturn<S extends AvailableActions> = Partial<{
   [K in keyof S]: ChainResponse<S>[0];
-};
+}>;
 
 export const executeChainActions = async <
   U extends State,
   A extends AvailableActions,
   P,
 >(
-  schema: A,
-  state: U,
+  // schema: A,
+  // state: U,
   init: ReturnType<typeof implementChain<A, U, P>>,
   response: ResponseType<A, U>,
   // actionZod: ReturnType<typeof getZodChainedCombined<A, U>>["combinedZod"],
   config: {
-    permissions: ChainPermissions<A>;
+    permissions?: ChainPermissions<A>;
     params: (typeof init)["functions"] extends undefined
       ? never
       : Parameters<ChainFunctions<A, U, P>>[0];
   },
 ): Promise<ChainReturn<A>> => {
   if (!response.response.validated) {
-    console.log(JSON.stringify(response, null, 2))
     throw new Error("Response is not validated");
   }
 
   const permissions = config?.permissions ?? undefined;
 
   if (!response.response.validated.success)
-    throw new Error("Response is not validated");
+    throw new Error("Response is not successfully validated");
 
   const chainActions = response.response.validated.data as {
     [k in keyof A]: A[k];
@@ -87,7 +86,7 @@ export const executeChainActions = async <
       });
     }
 
-    const eachPermission = permissions[key];
+    const eachPermission = permissions ? permissions[key] : true;
 
     if (!(key in setOfFunctions)) {
       setOfFunctionResult.push({
@@ -115,6 +114,7 @@ export const executeChainActions = async <
       await setOfFunctions[key as keyof typeof setOfFunctions](value);
 
     if (typeof valueFunc === "object") {
+      // biome-ignore lint/complexity/noForEach: <explanation>
       Object.entries(valueFunc as object).forEach(([k, v]) => {
         storage.set(k, v);
       });
@@ -130,9 +130,8 @@ export const executeChainActions = async <
     iteration++;
   }
 
-  console.log(storage);
-
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-return
+  console.log("Data Bucket", storage);
+  
   return Object.assign(
     {},
     ...setOfFunctionResult.map((el) => ({ [el.key]: el })),
