@@ -1,99 +1,67 @@
 import type { infer as Infer } from "zod";
-import type {
-  AvailableActions,
-  ChainFunctions,
-  getZodChainedCombined,
-  implementChain,
-} from ".";
-import type { State } from "../state";
 import type { ResponseType } from "../extract";
-import { ArrayMapAsync, ObjectMap, ObjectMapAsync } from "../lib/utils";
+import { ArrayMapAsync } from "../lib/utils";
+import type { State } from "../state";
+import type { AvailableActions, ChainFunctions } from "./chained";
+import type { executeChainActions } from "./execute";
+import type { implementChain } from "./implement";
 
-export type ChainPermissions<A extends AvailableActions> = {
-  [F in keyof A]: boolean;
-};
+type Execution<
+U extends State,
+A extends AvailableActions,
+P>
+= Awaited<ReturnType<typeof executeChainActions<State, AvailableActions, {}>>>
 
-type ChainResponse<S extends AvailableActions, K extends keyof S = keyof S> = ({
-  key: K;
-  iteration: number;
-  permission?: boolean;
-} & ({ value: ReturnType<Infer<S[K]>> } | { error: Error }))[];
-
-export type ChainReturn<S extends AvailableActions> = Partial<{
-  [K in keyof S]: ChainResponse<S>[0];
-}>;
-
-export const executeChainActions = async <
+export const reExecuteChainActions = async <
   U extends State,
   A extends AvailableActions,
   P
 >(
-  // schema: A,
-  // state: U,
   init: ReturnType<typeof implementChain<A, U, P>>,
-  response: ResponseType<A, U>,
-  // actionZod: ReturnType<typeof getZodChainedCombined<A, U>>["combinedZod"],
+  previous: Execution<U,A,P>,
   config: {
-    permissions?: ChainPermissions<A>;
+    permissions: Record<string, boolean>;
     params: (typeof init)["functions"] extends undefined
       ? never
       : Parameters<ChainFunctions<A, U, P>>[0];
   }
-) => {
-  if (!response.response.validated) {
-    throw new Error("Response is not validated");
-  }
-
+):Promise<Execution<U,A,P>> => {
   const permissions = config?.permissions ?? undefined;
-
-  if (!response.response.validated.success)
-    throw new Error("Response is not successfully validated");
-
-  const chainActions = response.response.validated.data as Array<{
-    [k in keyof A]: A[k];
-  }>;
 
   if (!init.functions) throw new Error("Functions are not provided");
   if (!config?.params) throw new Error("Function parameters are not provided");
 
-  const state = {
-    validated: response.state.validated?.data,
-    partial: response.state.partial?.data,
-  }
-
   const setOfFunctions = init.functions(
     config.params,
-    state.validated,
-    state.partial
+    previous.state.validated,
+    previous.state.partial
   );
 
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const inputBucket: { [K in string]: any } = {};
-  // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-  const outputBucket: { [K in string]: any } = {};
+  const inputBucket = previous.inputBucket;
+  const outputBucket = previous.outputBucket;
 
   const executions = await ArrayMapAsync(
-    chainActions,
-    async (action, iteration, [error, setError]) => {
-      const func = Object.entries(action)[0];
+    previous.executions,
+    async (execute, i, [err, setError]) => {
+      if (execute.result) return execute;
 
-      if (!func) {
+      const { key, value } = execute as unknown as {key: string, value: Parameters<Infer<A[keyof A]>>}
+
+      if (!key || !value) {
         setError();
         return {
-          iteration,
+          iteration:i,
           key: "unknown",
           error: new Error("Function not found in iteration"),
         };
       }
-
-      const [key, value] = func as [string, Parameters<Infer<A[keyof A]>>];
 
       if (!(key in setOfFunctions)) {
         setError();
         return {
           key,
           value,
-          iteration,
+          iteration: i,
           error: new Error(`Function "${key}" is not implemented yet`),
         };
       }
@@ -104,7 +72,7 @@ export const executeChainActions = async <
         setError();
         return {
           key,
-          iteration,
+          iteration: i,
           value,
           permission: eachPermission,
           error: new Error(
@@ -113,9 +81,9 @@ export const executeChainActions = async <
         };
       }
 
-      if (error) {
+      if (err) {
         return {
-          iteration,
+          iteration: i,
           key,
           value,
           permission: eachPermission,
@@ -135,7 +103,7 @@ export const executeChainActions = async <
                 setError();
                 return {
                   key,
-                  iteration,
+                  iteration:i,
                   value,
                   permission: eachPermission,
                   error: new Error(
@@ -162,7 +130,7 @@ export const executeChainActions = async <
 
       return {
         key,
-        iteration,
+        iteration:i,
         value,
         permission: eachPermission,
         result,
@@ -170,5 +138,10 @@ export const executeChainActions = async <
     }
   );
 
-  return { executions, inputBucket, outputBucket, state };
+    return {
+        executions,
+        inputBucket,
+        outputBucket,
+        state: previous.state,
+    };
 };

@@ -17,7 +17,7 @@ import type { State, StateToValues } from "../state";
 import type { AsyncFunction, ToAsyncFunction } from "../type";
 
 export type AvailableActions = Record<
-  string | number | symbol,
+  string,
   // biome-ignore lint/suspicious/noExplicitAny: <explanation>
   ZodFunction<any, any>
 >;
@@ -45,6 +45,12 @@ export const getZodChainedCombined = <
 
   const actionZodData = ObjectMap(schema, ([K, V]) => {
     const zodValue = (V._def.args ?? z.any())._def?.items[0] as ZodSchema;
+
+    actionZodValue.push(
+      z.object({
+        [K]: zodValue,
+      })
+    );
 
     const { node: type } = zodToTs(zodValue, K as string);
     const typeString = printNode(type);
@@ -110,19 +116,16 @@ ${ChainedActionsType}`;
 
   const type_description = wrapType(final_type);
   const combinedZod = z.array(z.union(actionZodValue));
-  const { node: type } = zodToTs(combinedZod);
 
   return {
     combinedZod,
     type_description,
-    typeString: printNode(type),
     RecordOfActionsType,
     AvailableActionsType,
     ChainedActionsType,
     stateZod,
     rawStateZod,
     actionZodData,
-    type,
   };
 };
 
@@ -139,5 +142,5 @@ export type ChainExample<A extends AvailableActions, U extends State> = {
 }[];
 
 export type GetFirstParamFunction<A extends AvailableActions> = {
-  [k in keyof A]: Infer<A[k]["_def"]["args"][0]>;
+  [k in keyof A]: Infer<A[k]["_def"]["args"]>[0];
 };

@@ -5,10 +5,11 @@ import {
   executeChainActions,
   getZodChainedCombined,
   implementChain,
-  ChainReturn,
 } from "./chain";
+import { reExecuteChainActions } from "./chain/re-execute";
 import { createExtraction } from "./extract";
 import { chainedActionPrompt } from "./lib/prompt";
+import { stringZod } from "./lib/utils";
 import type { State } from "./state";
 
 const model = new TogetherAI({
@@ -21,13 +22,13 @@ const Schema = {
     .function()
     .describe("When action needs imformation of a user to continue in order. ")
     .args(z.object({ name: z.string() }))
-    .returns(z.object({ email: z.string() })),
+    .returns(z.object({ email: z.string(), name: z.string() })),
   sentEmailToUser: z
     .function()
     .describe(
       "When action is requisting to sent an email to someone. Pass name of user as param."
     )
-    .args(z.object({ email: z.string(), text: z.string() }))
+    .args(z.object({ email: z.string(), text: z.string(), subject: z.string() }))
     .returns(z.string()),
   createSummary: z
     .function()
@@ -40,14 +41,14 @@ const Schema = {
 
 const userState = {
   userSelectedContact: z
-    .string()
-    .transform((x) => `User selected a contact named ${x} from list`),
-  userDragged: z.string().transform((x) => `User dragged ${x} out of the box`),
-  userEvent: z
     .object({
-      x: z.string(),
+      name: z.string(),
+      email: z.string(),
     })
-    .transform((e) => e.x),
+    .transform(
+      (x) =>
+        `User selected/mensioned a contact from list, with name: ${x.name} and email: ${x.email}`
+    ),
 } satisfies State;
 
 type FuncParam = {
@@ -57,13 +58,13 @@ type FuncParam = {
 
 const materials = getZodChainedCombined(Schema, userState);
 
-// console.log(JSON.stringify(materials.actionZodData, null, 2))
+// console.log(stringZod(materials.combinedZod ?? z.any(), "RawState"));
 
 const init = implementChain(Schema, userState, materials, {
   functions: (x: FuncParam, y, z) => ({
-    searchUserWithName: async ({ name }) => ({ email: `${name}@gmail.com` }),
-    sentEmailToUser: async ({ email, text }) =>
-      `Senting email to ${email}, with subject: ${text}`,
+    searchUserWithName: async ({ name }) => ({ email: `${name}@gmail.com`, name: name }),
+    sentEmailToUser: async ({ email, text, subject }) =>
+      `Senting email to ${email}, with subject: ${subject} at ${(new Date()).toLocaleString()}`,
     createSummary: async ({ text }) => {
       console.log("extra data", x, y, z);
       return { text: `Summary of ${text}` };
@@ -72,94 +73,94 @@ const init = implementChain(Schema, userState, materials, {
   examples: [
     {
       Input: "Find user Rajat",
-      State: {
-        userSelectedContact: "Rajat",
-      },
       Output: [{ searchUserWithName: { name: "Rajat" } }],
     },
     {
-      Input: "Sent email to guy named Alex",
+      Input: "Sent casual 'hello' email to guy named Alex",
       Output: [
         { searchUserWithName: { name: "Alex" } },
-        { sentEmailToUser: { email: "unknown" } },
+        { sentEmailToUser: { email: "unknown", text: "hello", subject: "Casual Talk" } },
       ],
     },
     {
-      Input: "Sent email to this guy",
-      Output: [{ sentEmailToUser: { email: "unknown" } }],
+      Input: "Sent 'Hi' email to this guy with subject: recent updates about work",
+      State: {
+        userSelectedContact: {
+          name: "Rahul",
+          email: "rahul@gmail.com",
+        }
+      },
+      Output: [{ sentEmailToUser: { email: "rahul@gmail.com", text: "Hi", subject: "updates about work" } }],
     },
     {
       Input: "Create summary of BlockChain and Sent email to abcd@example.com",
       Output: [
         { createSummary: { text: "BlockChain" } },
-        { sentEmailToUser: { email: "abcd@example.com", text: "unknown" } },
+        { sentEmailToUser: { email: "abcd@example.com", text: "unknown", subject: "Summary of BlockChain" } },
       ],
     },
   ],
 });
 
 const chain = await createExtraction(
-  // Schema,
-  // userState,
   model,
   init,
-  {
-    combinedZod: materials.combinedZod,
-    stateZod: materials.stateZod,
-    rawStateZod: materials.rawStateZod,
-  },
+  materials,
   chainedActionPrompt
 );
 
-// const res = await chain.invoke(
-//   "find Diane, and sent a summary of 'health care' to her on email",
-//   {
-//     state: {
-//       userSelectedContact: "Diane"
+const res = await chain.invoke(
+  "sent a summary of 'health care' to her on email",
+  {
+    state: {
+      userSelectedContact:{
+        email: "Diane@gmail.com",
+        name: "Diane"
+      }
+    }
+  }
+);
+
+// console.log(res.response);
+
+// const res = {
+//   input: "find Diane, and sent a summary of 'health care' to her on email",
+//   response: {
+//     raw: '\n<json>[{"searchUserWithName":{"name":"Diane"}},{"createSummary":{"text":"health care"}},{"sentEmailToUser":{"email":"unknown","text":"unknown"}}]</json>',
+//     validated: {
+//       data: [
+//         { searchUserWithName: { name: "Diane" } },
+//         { createSummary: { text: "health care" } },
+//         { sentEmailToUser: { email: "unknown", text: "unknown" } },
+//       ],
+//       json: [
+//         { searchUserWithName: { name: "Diane" } },
+//         { createSummary: { text: "health care" } },
+//         { sentEmailToUser: { email: "unknown", text: "unknown" } },
+//       ],
+//       success: true,
 //     },
 //   },
-// );
+//   state: {
+//     raw: { userSelectedContact: "Diane" },
+//     partial: { data: { userSelectedContact: "Diane" }, success: true },
+//     validated: {
+//       data: {
+//         userSelectedContact: "User selected a contact named Diane from list",
+//       },
+//       success: true,
+//     },
+//   },
+// };
 
-const res = {
-  input: "find Diane, and sent a summary of 'health care' to her on email",
-  response: {
-    raw: '\n<json>[{"searchUserWithName":{"name":"Diane"}},{"createSummary":{"text":"health care"}},{"sentEmailToUser":{"email":"unknown","text":"unknown"}}]</json>',
-    validated: {
-      data: [
-        { searchUserWithName: { name: "Diane" } },
-        { createSummary: { text: "health care" } },
-        { sentEmailToUser: { email: "unknown", text: "unknown" } },
-      ],
-      json: [
-        { searchUserWithName: { name: "Diane" } },
-        { createSummary: { text: "health care" } },
-        { sentEmailToUser: { email: "unknown", text: "unknown" } },
-      ],
-      success: true,
-    },
-  },
-  state: {
-    raw: { userSelectedContact: "Diane" },
-    partial: { data: { userSelectedContact: "Diane" }, success: true },
-    validated: {
-      data: {
-        userSelectedContact: "User selected a contact named Diane from list",
-      },
-      success: true,
-    },
-  },
-};
-
-const x = await executeChainActions(
-  // Schema,
-  // userState,
+const previous = await executeChainActions(
   init,
   res,
   {
     permissions: {
-      searchUserWithName: true,
-      createSummary: true,
-      sentEmailToUser: true
+      searchUserWithName: false,
+      createSummary: false,
+      sentEmailToUser: false,
     },
     params: {
       ctx: {},
@@ -168,11 +169,23 @@ const x = await executeChainActions(
   }
 );
 
-console.log(x);
+console.log(previous);
 
 
-// type xxx = ChainReturn<typeof Schema>
+const newResponse = await reExecuteChainActions(
+  init,
+  previous,
+  {
+    permissions: {
+      searchUserWithName: true,
+      createSummary: false,
+      sentEmailToUser: false,
+    },
+    params: {
+      ctx: {},
+      extra: {},
+    },
+  }
+);
 
-// const xxx :xxx = {
-  
-// }
+console.log(newResponse);

@@ -7,15 +7,24 @@ import type { infer as Infer, ZodObject } from "zod";
 import type { Schema, getZodCombined, implement } from "../actions";
 import { defaultPrompt } from "../lib/prompt";
 import { stateDescription } from "../lib/utils";
-import { rawSafeParseState, safeParse, safeParseState } from "../lib/validation";
+import {
+  rawSafeParseState,
+  safeParse,
+  safeParseState,
+} from "../lib/validation";
 import type { State, StateToValues } from "../state";
-import type { AvailableActions, getZodChainedCombined, implementChain } from "./../chain";
+import type {
+  AvailableActions,
+  getZodChainedCombined,
+  implementChain,
+} from "./../chain";
 
 export type ResponseType<S extends Schema, U extends State> = {
   input: string;
+  prompt: string;
   state: {
     raw: Partial<Infer<ZodObject<U>>>;
-    partial?: ReturnType<typeof rawSafeParseState<U>>
+    partial?: ReturnType<typeof rawSafeParseState<U>>;
     validated?: ReturnType<typeof safeParseState>;
   };
   response: {
@@ -24,43 +33,51 @@ export type ResponseType<S extends Schema, U extends State> = {
   };
 };
 
-export const createExtraction = async <U extends State, A extends AvailableActions, S extends Schema, P>(
+export const createExtraction = async <
+  U extends State,
+  A extends AvailableActions,
+  S extends Schema,
+  P
+>(
   // schema: A | S,
   // state: U,
   llm: BaseLanguageModel,
-  init: ReturnType<typeof implement<U, S, P> | typeof implementChain<A, U, P>> ,
+  init: ReturnType<typeof implement<U, S, P> | typeof implementChain<A, U, P>>,
   zod: Pick<
-    ReturnType<typeof getZodCombined<S, U> | typeof getZodChainedCombined<A, U>>,
+    ReturnType<
+      typeof getZodCombined<S, U> | typeof getZodChainedCombined<A, U>
+    >,
     "combinedZod" | "stateZod" | "rawStateZod"
   >,
-  prompt: PromptTemplate = defaultPrompt,
+  prompt: PromptTemplate = defaultPrompt
 ) => {
   const { type_description, format_instructions } = init;
-  
+
   const { combinedZod, stateZod, rawStateZod } = zod;
-  
+
   type InvokeConfig = {
     state?: Partial<StateToValues<U>>;
-    invokeOptions?: BaseLanguageModelCallOptions | undefined
+    invokeOptions?: BaseLanguageModelCallOptions | undefined;
   };
 
   const invoke = async (
     Input: string,
     config?: InvokeConfig
   ): Promise<ResponseType<S, U>> => {
+
     const validatedState = safeParseState<U>(stateZod, config?.state);
     const rawValidated = rawSafeParseState<U>(rawStateZod, config?.state);
 
+    const state_description = validatedState?.data
+      ? stateDescription(validatedState.data as object, "", ", ")
+      : "";
+
     const promptText = await prompt.invoke({
       type_description,
-      state_description: validatedState?.data
-        ? stateDescription(validatedState.data as object, "", ", ")
-        : "",
+      state_description,
       format_instructions,
       input_prompt: Input,
     });
-
-    // console.log("Prompt Text", promptText);
 
     const response = await llm.invoke(promptText.value, config?.invokeOptions)
     // const response = (await chainedMessages.pipe(llm).invoke(
@@ -76,6 +93,7 @@ export const createExtraction = async <U extends State, A extends AvailableActio
 
     return {
       input: Input,
+      prompt: promptText.value,
       response: {
         raw: response,
         validated,

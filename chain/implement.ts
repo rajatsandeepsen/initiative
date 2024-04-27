@@ -15,7 +15,7 @@ export const implementChain = <A extends AvailableActions, U extends State, P>(
     typeName?: string;
   }
 ) => {
-  const { type_description, typeString, type, stateZod } = materials;
+  const { type_description, stateZod } = materials;
 
   const format_instructions = prepareExample(
     (config.examples ?? []) as Example,
@@ -29,8 +29,6 @@ export const implementChain = <A extends AvailableActions, U extends State, P>(
 
   return {
     type_description,
-    typeString,
-    type,
     format_instructions,
     // exampleChat,
     functions: config.functions,
