@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { infer as Infer, ZodFunction, ZodOptional, ZodSchema } from "zod";
 import { printNode, zodToTs } from "zod-to-ts";
 import { prepareChatFromExample, prepareExample } from "../lib/prompt";
-import { ObjectMap, wrapType } from "../lib/utils";
+import { ObjectMap, stringZod, wrapType } from "../lib/utils";
 import type { State, StateToValues } from "../state";
 import type { ToAsyncFunction, ToFunctionFirstParam } from "../type";
 
@@ -57,6 +57,10 @@ export const getZodCombined = <S extends Schema, U extends State>(
   const dataZod = z.object(objects);
 
   const combinedZod = actionZod.merge(dataZod);
+
+  console.log(stringZod(actionZod, "action"))
+  console.log(stringZod(dataZod, "data"))
+  console.log(stringZod(combinedZod, "combined"))
 
   const stateZod = state ? z.object(state) : undefined;
   const stateWithOutTransform = state

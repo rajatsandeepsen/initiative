@@ -6,7 +6,7 @@ import type { PromptTemplate } from "langchain/prompts";
 import type { infer as Infer, ZodObject } from "zod";
 import type { Schema, getZodCombined, implement } from "../actions";
 import { defaultPrompt } from "../lib/prompt";
-import { stateDescription } from "../lib/utils";
+import { stateDescription, stringZod } from "../lib/utils";
 import {
   rawSafeParseState,
   safeParse,
@@ -90,13 +90,17 @@ export const createExtraction = async <
     // )) as string;
 
     const validated = safeParse<S>(combinedZod, response);
-
+    const partial = validated.json ?? validated.data
+    console.log(stringZod(combinedZod, "hererehrehreh"))
     return {
       input: Input,
       prompt: promptText.value,
       response: {
         raw: response,
-        validated,
+        validated: {
+          ...validated, 
+          data: partial
+        },
       },
       state: {
         raw: config?.state ?? {},
