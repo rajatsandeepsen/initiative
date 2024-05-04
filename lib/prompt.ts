@@ -45,6 +45,7 @@ Examples
 
 Below is the actual input from the user. Please extract the information that matches the schema and output it in JSON format.
 Only write Output in single <json> tag. Do not write any more examples. Don't forget to follow the order function in the flow of array. If values of keys are unknown, just put "unknown" as value.
+Just write the a single set of <json> output, then stop. Stop writing after </json>.
 
 Input: {input_prompt}
 State: {state_description}
