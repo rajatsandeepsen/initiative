@@ -15,7 +15,7 @@ jobs:
       - name: Publish package on NPM 📦
         run: echo "Hi $NODE_AUTH_TOKEN Hi" && bun run publish
         env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+          NODE_AUTH_TOKEN: ${{secrets.NODE_AUTH_TOKEN}}
 
 # on:
 #   release:
