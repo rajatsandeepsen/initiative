@@ -10,12 +10,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
       - run: bun install --frozen-lockfile
 
       - name: Publish package on NPM 📦
-        run: echo "Hi $NODE_AUTH_TOKEN Hi" && bun run publish
+        run: echo "BUN $BUN_AUTH_TOKEN , NODE $NODE_AUTH_TOKEN" && bun run publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.NODE_AUTH_TOKEN}}
+          BUN_AUTH_TOKEN: ${{secrets.BUN_AUTH_TOKEN}}
 
 # on:
 #   release:
