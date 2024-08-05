@@ -4,6 +4,10 @@
 
 Use your zod schema to create a chain of actions and use it with any llm models.
 
+![Screenshot 2024-08-05 053710](https://github.com/user-attachments/assets/c6615a9b-cfc3-44ef-be3e-5c73930f4e83)
+
+## Installation
+
 ```bash
 npm install initiative
 ```
@@ -306,6 +310,9 @@ After execution
   },
 }
 ```
+
+### Working
+![Screenshot 2024-08-05 053647](https://github.com/user-attachments/assets/e449039c-c294-428d-a346-88902420501c)
 
 ### Coming Soooooooooooon
 
