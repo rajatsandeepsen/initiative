@@ -1,102 +1,38 @@
-import { PromptTemplate } from "@langchain/core/prompts";
-import type { Example } from "../actions";
-import {
-  AIMessage,
-  HumanMessage,
-  SystemMessage,
-  BaseMessage,
-} from "@langchain/core/messages";
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-} from "@langchain/core/prompts";
-import { stateDescription } from "./utils";
-import type { ZodSchema } from "zod";
+import type { TOOLS } from "../type"
+import { stringZod } from "./utils"
 
-export const system_message = `Your goal is to extract structured information from the user's input that matches type. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema.`;
-export const defaultPromptTemplate = `Your goal is to extract structured information from the user's input that matches the form described below. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema shown below.
+const displayToolsToType = (tools: TOOLS) =>
+  Object.entries(tools)
+      .map(([key, value]) => `type ${key} = (data:${stringZod(value.parameters, "data")}) => ${stringZod(value.returns, "returns")}`).join("\n\n")
 
-{type_description}
+const displayToolsToCode = (tools: TOOLS) =>
+  Object.entries(tools)
+      .map(([key, value]) => `const ${key} = (data:${stringZod(value.parameters, "data")}):${stringZod(value.returns, "returns")} => {\n    // ${value.description}\n    return // something\n}`).join("\n\n")
+
+export const newSystemPrompt = (text: string, tools: TOOLS, thisKeyWord:string) => `Your Persona: ${text}
+
+Instructions:
+- write pure javascript code
+- only use functions from the "Tools" list
+- functions are already defined
+- don't imported or redifined
+- nested functions are allowed
+- don't use any external libraries
+- don't use console.log
+- don't wrap code in a function
+- use let to declare variables
+- always end the code with return statement
+- wrap the entire JS code in \`\`\`js ... \`\`\` code block
+
+if function name is build(), then use it as ${thisKeyWord}.build()
 
 
-Please output the extracted information in JSON format. Do not output anything except for the extracted information. Always follow the type strict. undefined and optional types (key ?: value) are not need to write. But non-optional keys of object (key : value) should be always there, even though input is not specifing anything about it. Do not add any clarifying information. Do not add any fields that are not in the schema. If the text contains attributes that do not appear in the schema, please ignore them. All output must be in JSON format and follow the schema specified above. Wrap the JSON in <json> tags.
+Tools:
+${displayToolsToCode(tools)}
 
-Examples
-{format_instructions}
+const ${thisKeyWord} = {
+    ${Object.keys(tools).join(", ")}
+}
 
-Below is the actual input from the user. Please extract the information that matches the schema and output it in JSON format.
-Only write Output in single <json> tag. Do not write any more examples. Don't forget add non-optional keys in the output.
-
-Input: {input_prompt}
-State: {state_description}
-Output: `;
-
-export const ChainedPromptTemplate = `Your goal is to extract structured information from the user's input that matches the form described below. When extracting information please make sure it matches the type information exactly. Do not add any attributes that do not appear in the schema shown below.
-
-{type_description}
-
-These actions are chained, which means, each available actions (functions) are dependent on the previous actions. So, you need to consider the flow of array. If Input text instructs you to flow an order of execution (or asked you to do something), then follow that order same as in flow of array.
-If function params are unknown, just put "unknown" in the place of params, like in {{key: "unknown"}}, wher key is the param in schema. If half of the keys are unknown, its fine, just put "unknown". 
-
-Please output the extracted information in JSON format. Do not output anything except for the extracted information. Do not add any clarifying information. Do not add any fields that are not in the schema. If the text contains attributes that do not appear in the schema, please ignore them. All output must be in JSON format and follow the schema specified above. Wrap the JSON in <json> tags.
-
-Examples
-{format_instructions}
-
-Below is the actual input from the user. Please extract the information that matches the schema and output it in JSON format.
-Only write Output in single <json> tag. Do not write any more examples. Don't forget to follow the order function in the flow of array. If values of keys are unknown, just put "unknown" as value.
-Just write the a single set of <json> output, then stop. Stop writing after </json>.
-
-Input: {input_prompt}
-State: {state_description}
-Output: `;
-
-export const defaultPrompt = new PromptTemplate({
-  inputVariables: [
-    "type_description",
-    "format_instructions",
-    "input_prompt",
-    "state_description",
-  ],
-  template: defaultPromptTemplate,
-});
-
-export const chainedActionPrompt = new PromptTemplate({
-  inputVariables: [
-    "type_description",
-    "format_instructions",
-    "input_prompt",
-    "state_description",
-  ],
-  template: ChainedPromptTemplate,
-});
-
-export const outputToJson = (output: unknown) => {
-  return `<json>${JSON.stringify(output)}</json>`;
-};
-
-export const prepareExample = (examples: Example, stateZod?:ZodSchema, stateTitle = "State") => {
-  const format_instructions = `${examples
-    .map((example) => {
-      const transformedState = stateZod?.parse(example.State) ?? example.State
-      const line = `Input: ${example.Input}\n${stateDescription(transformedState, stateTitle, ", ")}Output: ${outputToJson(
-        example.Output,
-      )}`;
-      return line;
-    })
-    .join("\n")}\n`;
-
-  return format_instructions;
-};
-
-export const chainedMessages = ChatPromptTemplate.fromMessages([
-  // new MessagesPlaceholder("system_message"),
-  // new MessagesPlaceholder("example_message"),
-  new MessagesPlaceholder("last_message"),
-]);
-
-export const prepareChatFromExample = (examples: Example) =>
-  examples.flatMap((example) => [
-    new HumanMessage(example.Input),
-    new AIMessage(outputToJson(example.Output)),
-  ]);
+Using above functions, write code to solve the user prompt
+`

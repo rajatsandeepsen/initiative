@@ -1,106 +1,53 @@
-import { TogetherAI } from "@langchain/community/llms/togetherai";
-import { z } from "zod";
-import { type Schema, getZodCombined, implement } from "./actions";
-import { executeActions } from "./actions/execute";
-import { createExtraction } from "./extract";
-import type { State } from "./state";
+import { z } from "zod"
+import { etool, generateCode } from "./index"
+import { model } from "./model"
 
-const model = new TogetherAI({
-  modelName: "mistralai/Mixtral-8x7B-Instruct-v0.1",
-  apiKey: process.env.API_KEY,
-});
+let balance = 30
+const history = [
+    { amount: 20, to: "Alice" },
+    { amount: 10, from: "Bob" },
+]
 
-const userState = {
-  userSelected: z
-    .enum(["YES", "NO"])
-    .transform((x) => `User selected ${x} on text permissions`),
-  userDragged: z.string().transform((x) => `User dragged ${x} out of the box`),
-} satisfies State;
+const tools = ({
+    getBalance: etool({
+        description: "get balance of the user",
+        parameters: z.object({}),
+        execute: async () => {
+            return balance
+        },
+        returns: z.number()
+    }),
+    sentMoney: etool({
+        description: "send money to the user",
+        parameters: z.object({ amount: z.number(), receiver: z.string() }),
+        execute: async ({ amount, receiver }) => {
+            if (balance < amount) {
+                throw new Error("Insufficient balance")
+            }
+            balance -= amount
 
-const schema = {
-  getUserData: z
-    .function()
-    .describe("When user want to get the data of any other users")
-    .args(z.string())
-    .returns(z.string())
-    .optional(),
-  setName: z
-    .function()
-    .describe("When user input wants to update his/her name of the user")
-    .args(z.string())
-    .returns(z.void())
-    .optional(),
-  getTime: z
-    .function()
-    .args(z.enum(["NOW"]))
-    .describe("Non optional function to get the current time. Always use it.")
-    .returns(z.date()),
-  // .optional(),
-} satisfies Schema;
+            history.push({ amount, to: receiver })
+        },
+        returns: z.void()
+    }),
+    getHistory: etool({
+        description: "get history of transactions",
+        parameters: z.unknown(),
+        execute: async () => {
+            return history
+        },
+        returns: z.array(
+            z.object({ amount: z.number(), to: z.string() })
+                .or(z.object({ amount: z.number(), from: z.string() })))
+    })
+})
 
-type FuncParam = {
-  ctx: unknown;
-  extra: unknown;
-};
+const result = await generateCode({
+    model,
+    system: "You are a banking app",
+    tools: tools,
+    prompt: "Get history and find amount i got from Bob, then send that amount to Bob. Then again get history and balance",
+})
 
-const material = getZodCombined(schema, userState);
-
-const init = implement(schema, material, {
-  state: userState,
-  functions: (z: FuncParam, y) => ({
-    getUserData: (name) => `${name} ${y?.userDragged}`,
-    setName: () => {
-      console.log("Name changed");
-    },
-    getTime: () => new Date(),
-  }),
-  examples: [
-    {
-      Input: "What the time?",
-      State: {},
-      Output: {
-        getTime: "NOW",
-      },
-    },
-    {
-      Input: "Set my name to Rajat",
-      Output: {
-        setName: "Rajat",
-        getTime: "NOW",
-      },
-    },
-    {
-      Input: "Find the person name Keanu",
-      Output: {
-        getUserData: "Keanu",
-        getTime: "NOW",
-      },
-    },
-  ],
-});
-
-const chain = await createExtraction(
-  model,
-  init,
-  material
-);
-
-const userStateData = {
-  userSelected: "YES",
-  userDragged: "Toy",
-};
-
-console.log(init.typeString);
-
-const response = await chain.invoke("Find Alen", { state: userStateData });
-console.log(response);
-
-const recipt = await executeActions(init, response, material, {
-  permissions: { getTime: false, setName: true, getUserData: true },
-  params: {
-    ctx: {},
-    extra: {},
-  },
-});
-
-console.log(recipt);
+console.log("Code:\n", result.code)
+console.log("Output:\n", result.execute())

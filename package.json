@@ -1,7 +1,7 @@
 {
   "name": "initiative",
-  "version": "0.2.9",
-  "description": "Let's turn your LLM into Action Models with Zod",
+  "version": "0.2.91",
+  "description": "Vercel AI-SDK extension for making coding decisions with LLMs",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "license": "MIT",
@@ -17,17 +17,15 @@
     "prepublishOnly": "bun run build"
   },
   "dependencies": {
-    "@langchain/community": "^0.0.40",
-    "@langchain/core": "^0.1.48",
-    "langchain": "^0.1.28",
-    "zod": "^3.22.2",
-    "zod-to-ts": "^1.2.0",
-    "zod-validation-error": "^3.0.3"
+    "@ai-sdk/openai": "^1.0.8",
+    "ai": "^4.0.18",
+    "zod": "^3.24.1",
+    "zod-to-ts": "^1.2.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.5.3",
+    "@biomejs/biome": "^1.9.4",
     "@types/bun": "latest",
-    "bun-plugin-dts": "^0.2.2",
-    "typescript": "^5.2.2"
+    "bun-plugin-dts": "0.3.0",
+    "typescript": "^5.7.2"
   }
 }

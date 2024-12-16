@@ -1,15 +1,17 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable @typescript-eslint/ban-types */
+import type { generateText } from "ai";
+import type { ZodSchema, infer as Infer, ZodAny, ZodUnknown } from "zod";
 
-export type FilterNeverProperties<T> = {
-    [K in keyof T as T[K] extends never ? never : K]: T[K];
-};
+export type TOOL<PARAMETERS extends ZodSchema, RESULT extends ZodSchema> = {
+    parameters: PARAMETERS,
+    returns: RESULT,
+    execute: (data: Infer<PARAMETERS>) => Promise<Infer<RESULT>> | Infer<RESULT>,
+    description?: string
+}
 
-export type ToFunction<T> = T extends Function ? T : never
+export type TOOLS = Record<string, TOOL>
 
-export type ToFunctionFirstParam<T, O = never> = T extends Function ? Parameters<T>[0] : O
+export type GenerateCode = typeof generateText<TOOLS>
 
-export type ToAsyncFunction<T> = T extends Function ? AsyncFunction<T> | T : never
-
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export type  AsyncFunction<T extends (...args: any[]) => any> = (...args: Parameters<T>) => Promise<ReturnType<T>>;
+export type Prettify<T> = {
+    [K in keyof T]: T[K];
+} & {};
