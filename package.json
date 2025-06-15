@@ -1,0 +1,49 @@
+{
+	"name": "initiative",
+	"description": "Vercel AI-SDK extension for making coding decisions",
+	"version": "0.2.9",
+	"main": "./dist/index.js",
+	"module": "./dist/index.cjs",
+	"types": "./dist/index.d.ts",
+	"files": ["dist/**/*"],
+	"scripts": {
+		"build": "tsup",
+		"build:watch": "tsup --watch"
+	},
+	"exports": {
+		"./package.json": "./package.json",
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.cjs",
+			"require": "./dist/index.js"
+		}
+	},
+	"dependencies": {
+		"zod-to-ts": "^1.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "20.17.24",
+		"tsup": "^8",
+		"typescript": "5.6.3"
+	},
+	"peerDependencies": {
+		"ai": "^4.0.0",
+		"zod": "^3.0.0"
+	},
+	"engines": {
+		"node": ">=18"
+	},
+	"publishConfig": {
+		"access": "public"
+	},
+	"homepage": "https://github.com/rajatsandeepsen/initiative.git",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/rajatsandeepsen/initiative.git"
+	},
+	"bugs": {
+		"url": "https://github.com/rajatsandeepsen/initiative/issues"
+	},
+	"keywords": ["ai", "ai-sdk", "zod", "agent", "coding"],
+	"type": "module"
+}
