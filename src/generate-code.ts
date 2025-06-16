@@ -2,7 +2,7 @@ import { newSystemPrompt } from './prompt';
 import { createFunction } from './function';
 import { generateText } from 'ai';
 import type { CodeTool } from './tool';
-import { globalPermission } from './validate';
+import type { GlobalPermission } from './validate';
 
 const js_regex = /```js\n([\s\S]*?)\n```/g;
 const json_regex = /```json\n([\s\S]*?)\n```/g;
@@ -13,6 +13,8 @@ type GenerateCodeParams = Omit<Parameters<typeof generateText>[0], 'tools'> & {
   tools: Record<string, CodeTool>;
   /**
   Optional configuration for global variables that can be used to control the execution environment.
+  Default is `undefined`, which is super insecure
+  @default undefined
 
   @property reject - Specifies the environments or variables to exclude. Can be:
     - "all": Reject all environments.
@@ -30,11 +32,11 @@ type GenerateCodeParams = Omit<Parameters<typeof generateText>[0], 'tools'> & {
       /**
       * @default []
       */
-    reject?: globalPermission
+    reject?: GlobalPermission
     /**
     * @default "all"
     */
-    allow?: globalPermission
+    allow?: GlobalPermission
   }
 };
 type GenerateCodeReturns = Omit<

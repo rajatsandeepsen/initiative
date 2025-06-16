@@ -50,14 +50,15 @@ type GlobalVariables = (
   | SharedGlobalVariables
   | NodeVariables
   | BrowserVariables
+  | (string & {})
 )[];
 
-export type globalPermission = "all" | "browser" | "node" | GlobalVariables;
+export type GlobalPermission = "all" | "browser" | "node" | GlobalVariables;
 const validPermissions = ["all", "browser", "node"];
 
 export const getRejectedVariables = (
-  allow: globalPermission,
-  reject: globalPermission,
+  allow: GlobalPermission,
+  reject: GlobalPermission,
 ): GlobalVariables => {
   // Error: 'allow' and 'reject' cannot be the same string permission
   if (typeof reject === "string" && reject === allow) {
@@ -104,12 +105,12 @@ export const getRejectedVariables = (
 
   return allVariables.filter(
     (variable: string) =>
-      !allowedVariables.includes(variable) ||
-      rejectedVariables.includes(variable),
-  ).concat(alwaysReject)
+      !(allowedVariables as string[]).includes(variable) ||
+      (rejectedVariables as string[]).includes(variable),
+  )
 };
 
-export const checkStringsInCode = (stringsArray:string[], code:string) => {
+export const validateCode = (stringsArray:string[], code:string) => {
     const escapedStrings = stringsArray.map(str => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
     const regexPattern = `\\b(${escapedStrings.join('|')})\\b`;
